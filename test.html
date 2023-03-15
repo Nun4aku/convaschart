@@ -1,0 +1,116 @@
+
+
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Graphs</title>
+                <style>
+                    #chart {
+                    height: 400px;
+                    width: 800px;
+                    margin: 20px;
+                    border: 1px solid black;
+                    position: relative;
+                }
+                #legend {
+                    position: absolute;
+                    bottom: 0;
+                    left: calc(50% - 100px);
+                    background-color: white;
+                    padding: 10px;
+                    text-align: center;
+                }
+                </style>
+            </head>
+            <body>
+                <div id="chart"></div>
+                <script>
+                    const legend = document.createElement("div");
+                    legend.setAttribute("id", "legend");
+                    document.body.appendChild(legend);
+            
+                    const data = {};
+                    const colors = {};
+            
+                    function createGraph() {
+                        const now = Date.now();
+                        const startTime = now - (10 * 60 * 1000); // 10 minutes ago
+                        const graphData = {};
+            
+                        for (const name in data) {
+                            graphData[name] = [];
+                            for (const [time, value] of data[name]) {
+                                if (time >= startTime) {
+                                    graphData[name].push([time - startTime, value]);
+                                }
+                            }
+                        }
+            
+                        const chart = document.getElementById("chart");
+                        chart.innerHTML = "";
+            
+                        const canvas = document.createElement("canvas");
+                        canvas.height = 400;
+                        canvas.width = 800;
+                        chart.appendChild(canvas);
+            
+                        const ctx = canvas.getContext("2d");
+                        ctx.lineWidth = 2;
+            
+                        const maxValue = Math.max(...Object.values(graphData).flat().map(([time, value]) => value));
+                        const minValue = Math.min(...Object.values(graphData).flat().map(([time, value]) => value));
+                        const yScale = 380 / (maxValue - minValue);
+            
+                        let i = 0;
+                        for (const name in graphData) {
+                            if (!colors[name]) {
+                                colors[name] = `hsl(${(i * 70) % 360}, 70%, 50%)`;
+                            }
+                            ctx.strokeStyle = colors[name];
+                            ctx.beginPath();
+                            for (const [time, value] of graphData[name]) {
+                                const x = time / 60000 * 80;
+                                const y = (maxValue - value) * yScale;
+                                ctx.lineTo(x, y);
+                            }
+                            ctx.stroke();
+                            i++;
+                        }
+            
+                        legend.innerHTML = "";
+                        for (const name in colors) {
+                            const color = colors[name];
+                            const legendItem = document.createElement("div");
+                            legendItem.innerText = name;
+                            legendItem.style.color = color;
+                            legendItem.style.margin = "5px"; // Add margin
+                            legend.appendChild(legendItem);
+                        }
+                    }
+            
+                    function loadData() {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open("GET", "https://updownforecast.com/data.txt");
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                                const lines = xhr.responseText.trim().split("\n");
+                                for (const line of lines) {
+                                    const [name, value] = line.split(/\s+/);
+                                    if (!data[name]) {
+                                        data[name] = [];
+                                    }
+                                    const timestamp = Date.now();
+                                    data[name].push([timestamp, parseFloat(value)]);
+                                }
+                                createGraph();
+                            }
+                        }
+                        xhr.send();
+                    }
+            
+                    setInterval(loadData, 5000);
+                </script>
+            </body>
+            </html>
+            
